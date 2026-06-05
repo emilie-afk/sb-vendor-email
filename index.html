@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendor Reply</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #f4f3ef;
+      color: #1c1c1c;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .screen { width: 100%; max-width: 620px; }
+    .hidden { display: none !important; }
+
+    h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #2c5424;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .tagline {
+      font-size: 0.875rem;
+      color: #888;
+      margin-bottom: 32px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    .optional { font-weight: 400; color: #aaa; }
+
+    input[type="password"],
+    textarea {
+      width: 100%;
+      padding: 11px 13px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      background: #fff;
+      color: #1c1c1c;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input[type="password"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #2c5424;
+      box-shadow: 0 0 0 3px rgba(44,84,36,0.08);
+    }
+
+    textarea { resize: vertical; line-height: 1.55; }
+    #email-input  { min-height: 180px; }
+    #notes-input  { min-height: 80px; }
+
+    .field { margin-bottom: 18px; }
+
+    .btn {
+      padding: 11px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: #2c5424; color: #fff; width: 100%; }
+    .btn-primary:hover:not(:disabled) { background: #224019; }
+
+    .btn-secondary {
+      background: #ebeae5;
+      color: #444;
+      font-size: 0.8125rem;
+      padding: 7px 14px;
+    }
+    .btn-secondary:hover:not(:disabled) { background: #e0dfd9; }
+
+    .error { font-size: 0.8125rem; color: #b94040; margin-top: 8px; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #e4e3de;
+      margin: 28px 0;
+    }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .output-header label { margin: 0; }
+
+    #reply-output {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 120px;
+    }
+
+    #auth-screen { margin-top: 20vh; max-width: 360px; }
+    #auth-screen input { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <!-- Password screen -->
+  <div id="auth-screen" class="screen">
+    <h1>Vendor Reply</h1>
+    <p class="tagline">Enter your password to continue.</p>
+    <input type="password" id="password-input" placeholder="Password" autocomplete="current-password" />
+    <button class="btn btn-primary" id="auth-btn">Continue</button>
+    <p id="auth-error" class="error hidden">Wrong password. Try again.</p>
+  </div>
+
+  <!-- Main tool -->
+  <div id="main-screen" class="screen hidden">
+    <h1>Vendor Reply</h1>
+    <p class="tagline">Paste the latest email and generate a warm reply.</p>
+
+    <div class="field">
+      <label for="email-input">Latest email from the vendor</label>
+      <textarea id="email-input" placeholder="Paste the email here..." spellcheck="false"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="notes-input">Points to cover <span class="optional">(optional)</span></label>
+      <textarea id="notes-input" placeholder="Anything specific you want to address..." spellcheck="false"></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="generate-btn">Generate reply</button>
+    <p id="generate-error" class="error hidden"></p>
+
+    <div id="output-section" class="hidden">
+      <hr class="divider">
+      <div class="output-header">
+        <label>Reply</label>
+        <button class="btn btn-secondary" id="copy-btn">Copy</button>
+      </div>
+      <div id="reply-output"></div>
+    </div>
+  </div>
+
+  <script>
+    // Password held in memory only — cleared on every page reload or tab close
+    let sessionPassword = '';
+
+    const authScreen    = document.getElementById('auth-screen');
+    const mainScreen    = document.getElementById('main-screen');
+    const passwordInput = document.getElementById('password-input');
+    const authBtn       = document.getElementById('auth-btn');
+    const authError     = document.getElementById('auth-error');
+    const emailInput    = document.getElementById('email-input');
+    const notesInput    = document.getElementById('notes-input');
+    const generateBtn   = document.getElementById('generate-btn');
+    const generateError = document.getElementById('generate-error');
+    const outputSection = document.getElementById('output-section');
+    const replyOutput   = document.getElementById('reply-output');
+    const copyBtn       = document.getElementById('copy-btn');
+
+    // Auth
+    async function authenticate() {
+      const pw = passwordInput.value;
+      if (!pw) return;
+      authBtn.disabled = true;
+      authError.classList.add('hidden');
+      try {
+        const res = await fetch('/.netlify/functions/generate-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw, authOnly: true }),
+        });
+        if (res.status === 401) {
+          authError.classList.remove('hidden');
+          passwordInput.value = '';
+          passwordInput.focus();
+        } else {
+          sessionPassword = pw;
+          authScreen.classList.add('hidden');
+          mainScreen.classList.remove('hidden');
+          emailInput.focus();
+        }
+      } catch {
+        authError.textContent = 'Something went wrong. Try again.';
+        authError.classList.remove('hidden');
+      } finally {
+        authBtn.disabled = false;
+      }
+    }
+
+    authBtn.addEventListener('click', authenticate);
+    passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') authenticate(); });
+
+    // Generate
+    async function generate() {
+      const email = emailInput.value.trim();
+      if (!email) {
+        generateError.textContent = 'Paste an email first.';
+        generateError.classList.remove('hidden');
+        return;
+      }
+      generateError.classList.add('hidden');
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
+      outputSection.classList.add('hidden');
+      try {
+        const res = await fetch('/.netlify/functions/generate-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: sessionPassword,
+            email,
+            notes: notesInput.value.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          generateError.textContent = data.error || 'Something went wrong. Try again.';
+          generateError.classList.remove('hidden');
+          return;
+        }
+        replyOutput.textContent = data.reply;
+        outputSection.classList.remove('hidden');
+        outputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        copyBtn.textContent = 'Copy';
+      } catch {
+        generateError.textContent = 'Something went wrong. Try again.';
+        generateError.classList.remove('hidden');
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generate reply';
+      }
+    }
+
+    generateBtn.addEventListener('click', generate);
+
+    // Copy
+    copyBtn.addEventListener('click', () => {
+      const text = replyOutput.textContent;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>
