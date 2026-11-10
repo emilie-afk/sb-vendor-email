@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "system": "FICTIONAL SYSTEM GUIDE. Write a warm, short reply. No sign-off name.",
+  "user": "Vendor email:\n\n{{email}}{{notesBlock}}\n\nWrite a reply.",
+  "notes": "\n\nCover these points:\n{{notes}}"
+}
